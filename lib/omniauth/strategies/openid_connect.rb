@@ -212,7 +212,7 @@ module OmniAuth
           client_auth_method: options.client_auth_method
         )
 
-        verify_id_token!(decode_id_token(@access_token.id_token)) if configured_response_type == 'code'
+        #verify_id_token!(decode_id_token(@access_token.id_token)) if configured_response_type == 'code'
 
         @access_token
       end
