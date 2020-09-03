@@ -7,6 +7,26 @@ require 'open-uri'
 require 'omniauth'
 require 'openid_connect'
 require 'forwardable'
+require 'jwt'
+
+#module OIDCnoVerify
+#  def decodeNoVerify(jwt_string)
+#    new JSON::JWT.decode jwt_string, nil, false
+#  end
+#end
+
+class OIDCmod < ::OpenIDConnect::ResponseObject::IdToken  
+  class << self
+    def decodeNoVerify(jwt_string)
+      puts 'BEFORE decode'
+      x = JSON::JWT.decode(jwt_string,:skip_verification)
+      puts 'AFTER decode'
+      new x
+    end
+  end
+#  include OIDCnoVerify
+end
+
 
 module OmniAuth
   module Strategies
@@ -212,13 +232,43 @@ module OmniAuth
           client_auth_method: options.client_auth_method
         )
 
+	puts 'PRINT @access_token'
+	pp @access_token
+	puts 'PRINT @access_token.id_token'
+	puts @access_token.id_token
+	puts 'PRINT public_key'
+	pp public_key
+	puts 'PRINT mytoken'
+	mytoken = ::JWT.decode(@access_token.id_token,nil,false)
+	pp mytoken	
+	puts 'PRINT public_key[kid]'
+	puts public_key[0]
+	mytoken[0]['kid'] = public_key[0]['kid']
+	puts 'PRINT mytoken 2'
+	pp mytoken	
+	puts 'PRINT decode_id_token(@access_token.id_token)'
+	pp decode_id_token(@access_token.id_token)	
+
+	#puts 'PRINT decode_id_token(mytoken)'
+        #verify_id_token!(decode_id_token(::JWT.encode(mytoken))) if configured_response_type == 'code'
         #verify_id_token!(decode_id_token(@access_token.id_token)) if configured_response_type == 'code'
+        #verify_id_token!(@access_token.id_token) if configured_response_type == 'code'
 
         @access_token
       end
 
       def decode_id_token(id_token)
-        ::OpenIDConnect::ResponseObject::IdToken.decode(id_token, public_key)
+
+        #::OpenIDConnect::ResponseObject::IdToken.decode_self_issued(id_token)
+
+	#OIDCmod.decodeNoVerify(id_token)
+
+
+        #::OpenIDConnect::ResponseObject::IdToken.decode(id_token, public_key)
+        ::OpenIDConnect::ResponseObject::IdToken.decode(id_token, :skip_verification)
+
+
+        #::OpenIDConnect::ResponseObject::IdToken.decode(id_token,nil)
       end
 
       def client_options
@@ -330,6 +380,13 @@ module OmniAuth
       end
 
       def verify_id_token!(id_token)
+        puts 'PRINT verify_id_token!(id_token)'
+	puts 'options.issuer'
+        puts options.issuer
+        puts 'client_options.identifier'
+        puts client_options.identifier
+        puts 'stored_nonce'
+        puts stored_nonce
         decode_id_token(id_token).verify!(issuer: options.issuer,
                                           client_id: client_options.identifier,
                                           nonce: stored_nonce)
